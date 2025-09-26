@@ -62,7 +62,7 @@
   - Write widget tests for card display, rating functionality, and gesture handling
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 7.2, 7.4, 8.2, 8.3, 8.4_
 
-- [ ] 9. Create movie list view widget
+- [x] 9. Create movie list view widget
   - Implement MovieListView widget with scrollable list of recommendations
   - Add lazy loading and pagination for performance
   - Include movie poster, title, genre, and user rating in list items
