@@ -3,6 +3,9 @@ import '../../data/models/movie.dart';
 
 /// Abstract movie repository interface
 abstract class MovieRepository {
+  /// Set authentication details for user-specific operations
+  void setAuthenticationDetails({String? sessionId, int? accountId});
+  
   /// Search for movies by query
   Future<Result<List<Movie>>> searchMovies(String query);
   

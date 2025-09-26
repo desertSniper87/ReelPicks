@@ -233,4 +233,12 @@ class AuthProvider extends ChangeNotifier {
     _isInitialized = false;
     await initialize();
   }
+
+  /// Set session details for testing purposes
+  void setSessionDetails({String? sessionId, int? accountId}) {
+    _sessionId = sessionId;
+    _accountId = accountId;
+    _isAuthenticated = sessionId != null;
+    notifyListeners();
+  }
 }

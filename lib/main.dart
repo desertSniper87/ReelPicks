@@ -70,6 +70,7 @@ class MyApp extends StatelessWidget {
             ChangeNotifierProvider(
               create: (_) => UserProvider(
                 userRepository: userRepository,
+                movieRepository: movieRepository,
               ),
             ),
             ChangeNotifierProvider(

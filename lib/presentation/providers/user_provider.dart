@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../../data/models/user_preferences.dart';
 import '../../data/models/user_profile.dart';
+import '../../data/models/movie.dart';
 import '../../domain/repositories/user_repository.dart';
+import '../../domain/repositories/movie_repository.dart';
 
 /// Provider for managing user preferences and profile connections
 class UserProvider extends ChangeNotifier {
   final UserRepository _userRepository;
+  final MovieRepository _movieRepository;
 
   UserPreferences? _userPreferences;
   UserProfile? _userProfile;
@@ -13,8 +16,11 @@ class UserProvider extends ChangeNotifier {
   String? _error;
   bool _isInitialized = false;
 
-  UserProvider({required UserRepository userRepository})
-      : _userRepository = userRepository;
+  UserProvider({
+    required UserRepository userRepository,
+    required MovieRepository movieRepository,
+  }) : _userRepository = userRepository,
+       _movieRepository = movieRepository;
 
   // Getters
   UserPreferences? get userPreferences => _userPreferences;
@@ -123,20 +129,7 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateLetterboxdProfile(String username) async {
-    if (_userPreferences != null) {
-      final updatedPreferences = _userPreferences!.copyWith(letterboxdUsername: username);
-      await saveUserPreferences(updatedPreferences);
-    } else {
-      final newPreferences = UserPreferences(
-        preferredGenres: const [],
-        letterboxdUsername: username,
-        enablePersonalization: true,
-        defaultViewMode: ViewMode.swipe,
-      );
-      await saveUserPreferences(newPreferences);
-    }
-  }
+
 
   Future<void> updatePersonalizationEnabled(bool enabled) async {
     if (_userPreferences != null) {
@@ -277,5 +270,135 @@ class UserProvider extends ChangeNotifier {
   Future<void> refresh() async {
     _isInitialized = false;
     await initialize();
+  }
+
+  // Movie rating operations
+  Future<void> rateMovie(int movieId, double rating) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      // Ensure authentication details are set
+      if (_userProfile?.tmdbSessionId != null && _userProfile?.tmdbAccountId != null) {
+        _movieRepository.setAuthenticationDetails(
+          sessionId: _userProfile!.tmdbSessionId,
+          accountId: _userProfile!.tmdbAccountId,
+        );
+      }
+
+      final result = await _movieRepository.rateMovie(movieId, rating);
+      result.fold(
+        (failure) => _setError('Failed to rate movie: ${failure.message}'),
+        (_) {
+          // Rating successful
+          notifyListeners();
+        },
+      );
+    } catch (e) {
+      _setError('Failed to rate movie: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> deleteMovieRating(int movieId) async {
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      // Ensure authentication details are set
+      if (_userProfile?.tmdbSessionId != null && _userProfile?.tmdbAccountId != null) {
+        _movieRepository.setAuthenticationDetails(
+          sessionId: _userProfile!.tmdbSessionId,
+          accountId: _userProfile!.tmdbAccountId,
+        );
+      }
+
+      final result = await _movieRepository.deleteRating(movieId);
+      result.fold(
+        (failure) => _setError('Failed to delete rating: ${failure.message}'),
+        (_) {
+          // Rating deletion successful
+          notifyListeners();
+        },
+      );
+    } catch (e) {
+      _setError('Failed to delete rating: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<List<Movie>> getRatedMovies() async {
+    try {
+      // Ensure authentication details are set
+      if (_userProfile?.tmdbSessionId != null && _userProfile?.tmdbAccountId != null) {
+        _movieRepository.setAuthenticationDetails(
+          sessionId: _userProfile!.tmdbSessionId,
+          accountId: _userProfile!.tmdbAccountId,
+        );
+      }
+
+      final result = await _movieRepository.getRatedMovies();
+      return result.fold(
+        (failure) {
+          _setError('Failed to get rated movies: ${failure.message}');
+          return <Movie>[];
+        },
+        (movies) => movies,
+      );
+    } catch (e) {
+      _setError('Failed to get rated movies: ${e.toString()}');
+      return <Movie>[];
+    }
+  }
+
+  Future<List<Movie>> getWatchlist() async {
+    try {
+      // Ensure authentication details are set
+      if (_userProfile?.tmdbSessionId != null && _userProfile?.tmdbAccountId != null) {
+        _movieRepository.setAuthenticationDetails(
+          sessionId: _userProfile!.tmdbSessionId,
+          accountId: _userProfile!.tmdbAccountId,
+        );
+      }
+
+      final result = await _movieRepository.getWatchlist();
+      return result.fold(
+        (failure) {
+          _setError('Failed to get watchlist: ${failure.message}');
+          return <Movie>[];
+        },
+        (movies) => movies,
+      );
+    } catch (e) {
+      _setError('Failed to get watchlist: ${e.toString()}');
+      return <Movie>[];
+    }
+  }
+
+  // Profile management methods for external services
+  Future<void> updateIMDbProfile(String username) async {
+    await updateImdbUsername(username);
+    
+    // Also update preferences if needed
+    if (_userPreferences != null) {
+      final updatedPreferences = _userPreferences!.copyWith(
+        imdbProfileUrl: 'https://www.imdb.com/user/$username/',
+      );
+      await saveUserPreferences(updatedPreferences);
+    }
+  }
+
+  Future<void> updateLetterboxdProfile(String username) async {
+    await updateLetterboxdUsername(username);
+    
+    // Also update preferences if needed
+    if (_userPreferences != null) {
+      final updatedPreferences = _userPreferences!.copyWith(
+        letterboxdUsername: username,
+      );
+      await saveUserPreferences(updatedPreferences);
+    }
   }
 }

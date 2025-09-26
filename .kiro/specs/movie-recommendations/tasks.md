@@ -78,7 +78,7 @@
   - Write widget tests for filter interaction and state updates
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 7.3, 8.6_
 
-- [ ] 11. Build profile connection and management features
+- [x] 11. Build profile connection and management features
   - Create ProfileScreen for TMDb authentication and profile setup
   - Implement TMDb login flow with web view for user authorization
   - Add IMDb and Letterboxd profile setup and validation

@@ -52,6 +52,12 @@ dependencies:
   
   # Environment variables
   flutter_dotenv: ^5.1.0
+  
+  # WebView for TMDb authentication
+  webview_flutter: ^4.4.2
+  
+  # URL launcher for external links
+  url_launcher: ^6.2.1
 
 dev_dependencies:
   flutter_test:
