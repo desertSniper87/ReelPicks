@@ -6,7 +6,7 @@ import 'core/config/app_config.dart';
 import 'presentation/providers/recommendation_provider.dart';
 import 'presentation/providers/user_provider.dart';
 import 'presentation/providers/auth_provider.dart';
-import 'presentation/screens/home_screen.dart';
+import 'presentation/screens/main_navigation_screen.dart';
 import 'data/datasources/tmdb_client.dart';
 import 'data/services/authentication_service_impl.dart';
 import 'data/services/recommendation_service_impl.dart';
@@ -85,7 +85,7 @@ class MyApp extends StatelessWidget {
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
               useMaterial3: true,
             ),
-            home: const HomeScreen(),
+            home: const MainNavigationScreen(),
           ),
         );
       },

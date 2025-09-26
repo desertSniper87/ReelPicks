@@ -88,7 +88,7 @@
   - Write widget tests for profile connection and authentication workflow
   - _Requirements: 1.1, 1.2, 6.1, 6.2, 6.3, 6.4, 8.1, 9.4_
 
-- [ ] 12. Create main navigation and screen structure
+- [x] 12. Create main navigation and screen structure
   - Implement bottom navigation or tab-based navigation between swipe and list views
   - Create HomeScreen with swipe interface as default view
   - Add navigation to profile and settings screens
