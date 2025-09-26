@@ -3,9 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/error/exceptions.dart';
+import '../../core/error/error_handler.dart';
+import '../../core/cache/cache_manager.dart';
 import '../models/movie.dart';
+import '../models/recommendation_result.dart';
 
 /// TMDb API client for movie data and user interactions
 class TMDbClient {
@@ -196,27 +200,55 @@ class TMDbClient {
     }
   }
 
-  /// Fetch movie recommendations based on discovery
+  /// Fetch movie recommendations based on discovery with offline support
   Future<List<Movie>> getMovieRecommendations({
     List<String>? genres,
     int page = 1,
     String sortBy = 'popularity.desc',
   }) async {
-    final queryParams = <String, String>{
-      'page': page.toString(),
-      'sort_by': sortBy,
-      'include_adult': 'false',
-      'include_video': 'false',
-    };
+    final cacheKey = 'recommendations_${genres?.join(',') ?? 'all'}_${page}_$sortBy';
     
-    if (genres != null && genres.isNotEmpty) {
-      queryParams['with_genres'] = genres.join(',');
-    }
-    
-    final data = await _get(ApiConstants.discoverMovies, queryParams: queryParams);
-    final results = data['results'] as List<dynamic>;
-    
-    return results.map((movieJson) => Movie.fromTMDbJson(movieJson as Map<String, dynamic>)).toList();
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'sort_by': sortBy,
+        'include_adult': 'false',
+        'include_video': 'false',
+      };
+      
+      if (genres != null && genres.isNotEmpty) {
+        queryParams['with_genres'] = genres.join(',');
+      }
+      
+      try {
+        final data = await _get(ApiConstants.discoverMovies, queryParams: queryParams);
+        final results = data['results'] as List<dynamic>;
+        final movies = results.map((movieJson) => Movie.fromTMDbJson(movieJson as Map<String, dynamic>)).toList();
+        
+        // Cache the recommendations
+        final recommendationResult = RecommendationResult(
+          movies: movies,
+          source: genres != null && genres.isNotEmpty ? 'genre' : 'popular',
+          metadata: {
+            'genres': genres,
+            'page': page,
+            'sortBy': sortBy,
+          },
+          timestamp: DateTime.now(),
+        );
+        
+        await CacheManager.cacheRecommendations(recommendationResult, cacheKey);
+        
+        return movies;
+      } catch (e) {
+        // Try to get cached recommendations if API call fails
+        final cachedResult = await CacheManager.getCachedRecommendations(cacheKey);
+        if (cachedResult != null) {
+          return cachedResult.movies;
+        }
+        rethrow;
+      }
+    });
   }
 
   /// Fetch movie recommendations based on a specific movie
@@ -232,23 +264,53 @@ class TMDbClient {
     return results.map((movieJson) => Movie.fromTMDbJson(movieJson as Map<String, dynamic>)).toList();
   }
 
-  /// Fetch available movie genres
+  /// Fetch available movie genres with offline support
   Future<List<Genre>> getGenres() async {
-    final data = await _get(ApiConstants.genreList);
-    final genres = data['genres'] as List<dynamic>;
-    
-    return genres.map((genreJson) => Genre.fromJson(genreJson as Map<String, dynamic>)).toList();
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      try {
+        final data = await _get(ApiConstants.genreList);
+        final genres = data['genres'] as List<dynamic>;
+        
+        // Cache the genres
+        await CacheManager.cacheGenres(genres.cast<Map<String, dynamic>>());
+        
+        return genres.map((genreJson) => Genre.fromJson(genreJson as Map<String, dynamic>)).toList();
+      } catch (e) {
+        // Try to get cached genres if API call fails
+        final cachedGenres = await CacheManager.getCachedGenres();
+        if (cachedGenres != null) {
+          return cachedGenres.map((genreJson) => Genre.fromJson(genreJson)).toList();
+        }
+        rethrow;
+      }
+    });
   }
 
-  /// Fetch detailed information about a specific movie
+  /// Fetch detailed information about a specific movie with offline support
   Future<Movie> getMovieDetails(int movieId) async {
-    final endpoint = '/movie/$movieId';
-    final queryParams = <String, String>{
-      'append_to_response': 'genres',
-    };
-    
-    final data = await _get(endpoint, queryParams: queryParams);
-    return Movie.fromTMDbJson(data);
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      try {
+        final endpoint = '/movie/$movieId';
+        final queryParams = <String, String>{
+          'append_to_response': 'genres',
+        };
+        
+        final data = await _get(endpoint, queryParams: queryParams);
+        final movie = Movie.fromTMDbJson(data);
+        
+        // Cache the movie details
+        await CacheManager.cacheMovie(movie);
+        
+        return movie;
+      } catch (e) {
+        // Try to get cached movie if API call fails
+        final cachedMovie = await CacheManager.getCachedMovie(movieId);
+        if (cachedMovie != null) {
+          return cachedMovie;
+        }
+        rethrow;
+      }
+    });
   }
 
   /// Search for movies by query
@@ -265,57 +327,71 @@ class TMDbClient {
     return results.map((movieJson) => Movie.fromTMDbJson(movieJson as Map<String, dynamic>)).toList();
   }
 
-  /// Create a request token for authentication
+  /// Create a request token for authentication with enhanced error handling
   Future<String> createRequestToken() async {
-    final data = await _get(ApiConstants.createRequestToken, useCache: false);
-    final token = data['request_token'] as String?;
-    
-    if (token == null) {
-      throw const AuthenticationException('Failed to create request token');
-    }
-    
-    return token;
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      final data = await _get(ApiConstants.createRequestToken, useCache: false);
+      final token = data['request_token'] as String?;
+      
+      if (token == null) {
+        throw const AuthenticationException('Failed to create request token');
+      }
+      
+      return token;
+    });
   }
 
-  /// Create a session with an approved request token
+  /// Create a session with an approved request token with enhanced error handling
   Future<String> createSession(String approvedToken) async {
-    final body = {
-      'request_token': approvedToken,
-    };
-    
-    final data = await _post(ApiConstants.createSession, body: body);
-    final sessionId = data['session_id'] as String?;
-    
-    if (sessionId == null) {
-      throw const AuthenticationException('Failed to create session');
-    }
-    
-    return sessionId;
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      final body = {
+        'request_token': approvedToken,
+      };
+      
+      final data = await _post(ApiConstants.createSession, body: body);
+      final sessionId = data['session_id'] as String?;
+      
+      if (sessionId == null) {
+        throw const AuthenticationException('Failed to create session');
+      }
+      
+      return sessionId;
+    });
   }
 
-  /// Rate a movie (requires session)
+  /// Rate a movie (requires session) with enhanced error handling
   Future<bool> rateMovie(int movieId, double rating, String sessionId) async {
     if (rating < 0.5 || rating > 10.0) {
       throw const ValidationException('Rating must be between 0.5 and 10.0');
     }
     
-    final endpoint = ApiConstants.rateMovie.replaceAll('{id}', movieId.toString());
-    final queryParams = <String, String>{
-      'session_id': sessionId,
-    };
-    final body = {
-      'value': rating,
-    };
-    
-    try {
-      final data = await _post(endpoint, body: body, queryParams: queryParams);
-      return data['success'] as bool? ?? false;
-    } catch (e) {
-      if (e is AuthenticationException) {
-        rethrow;
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      final endpoint = ApiConstants.rateMovie.replaceAll('{id}', movieId.toString());
+      final queryParams = <String, String>{
+        'session_id': sessionId,
+      };
+      final body = {
+        'value': rating,
+      };
+      
+      try {
+        final data = await _post(endpoint, body: body, queryParams: queryParams);
+        final success = data['success'] as bool? ?? false;
+        
+        if (success) {
+          // Clear cached user rated movies to force refresh
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('user_rated_movies');
+        }
+        
+        return success;
+      } catch (e) {
+        if (e is AuthenticationException) {
+          rethrow;
+        }
+        return false;
       }
-      return false;
-    }
+    });
   }
 
   /// Delete a movie rating (requires session)
@@ -336,40 +412,72 @@ class TMDbClient {
     }
   }
 
-  /// Get user's rated movies (requires session and account ID)
+  /// Get user's rated movies (requires session and account ID) with offline support
   Future<List<Movie>> getRatedMovies(int accountId, String sessionId, {int page = 1}) async {
-    final endpoint = ApiConstants.ratedMovies.replaceAll('{account_id}', accountId.toString());
-    final queryParams = <String, String>{
-      'session_id': sessionId,
-      'page': page.toString(),
-    };
-    
-    final data = await _get(endpoint, queryParams: queryParams, useCache: false);
-    final results = data['results'] as List<dynamic>;
-    
-    return results.map((movieJson) {
-      final movie = Movie.fromTMDbJson(movieJson as Map<String, dynamic>);
-      // Add user rating from the response
-      final userRating = movieJson['rating'] as double?;
-      return movie.copyWith(userRating: userRating, isWatched: true);
-    }).toList();
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      try {
+        final endpoint = ApiConstants.ratedMovies.replaceAll('{account_id}', accountId.toString());
+        final queryParams = <String, String>{
+          'session_id': sessionId,
+          'page': page.toString(),
+        };
+        
+        final data = await _get(endpoint, queryParams: queryParams, useCache: false);
+        final results = data['results'] as List<dynamic>;
+        
+        final movies = results.map((movieJson) {
+          final movie = Movie.fromTMDbJson(movieJson as Map<String, dynamic>);
+          // Add user rating from the response
+          final userRating = movieJson['rating'] as double?;
+          return movie.copyWith(userRating: userRating, isWatched: true);
+        }).toList();
+        
+        // Cache user rated movies
+        await CacheManager.cacheUserRatedMovies(movies);
+        
+        return movies;
+      } catch (e) {
+        // Try to get cached rated movies if API call fails
+        final cachedMovies = await CacheManager.getCachedUserRatedMovies();
+        if (cachedMovies != null) {
+          return cachedMovies;
+        }
+        rethrow;
+      }
+    });
   }
 
-  /// Get user's watchlist movies (requires session and account ID)
+  /// Get user's watchlist movies (requires session and account ID) with offline support
   Future<List<Movie>> getWatchlistMovies(int accountId, String sessionId, {int page = 1}) async {
-    final endpoint = ApiConstants.watchlist.replaceAll('{account_id}', accountId.toString());
-    final queryParams = <String, String>{
-      'session_id': sessionId,
-      'page': page.toString(),
-    };
-    
-    final data = await _get(endpoint, queryParams: queryParams, useCache: false);
-    final results = data['results'] as List<dynamic>;
-    
-    return results.map((movieJson) {
-      final movie = Movie.fromTMDbJson(movieJson as Map<String, dynamic>);
-      return movie.copyWith(isWatched: true);
-    }).toList();
+    return await ErrorHandler.handleApiCallWithRetry(() async {
+      try {
+        final endpoint = ApiConstants.watchlist.replaceAll('{account_id}', accountId.toString());
+        final queryParams = <String, String>{
+          'session_id': sessionId,
+          'page': page.toString(),
+        };
+        
+        final data = await _get(endpoint, queryParams: queryParams, useCache: false);
+        final results = data['results'] as List<dynamic>;
+        
+        final movies = results.map((movieJson) {
+          final movie = Movie.fromTMDbJson(movieJson as Map<String, dynamic>);
+          return movie.copyWith(isWatched: true);
+        }).toList();
+        
+        // Cache user watchlist
+        await CacheManager.cacheUserWatchlist(movies);
+        
+        return movies;
+      } catch (e) {
+        // Try to get cached watchlist if API call fails
+        final cachedMovies = await CacheManager.getCachedUserWatchlist();
+        if (cachedMovies != null) {
+          return cachedMovies;
+        }
+        rethrow;
+      }
+    });
   }
 
   /// Get account details (requires session)

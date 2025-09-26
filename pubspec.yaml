@@ -58,6 +58,9 @@ dependencies:
   
   # URL launcher for external links
   url_launcher: ^6.2.1
+  
+  # Connectivity checking for offline functionality
+  connectivity_plus: ^5.0.2
 
 dev_dependencies:
   flutter_test:

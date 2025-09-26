@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import '../../core/error/failures.dart';
+import '../../core/error/error_handler.dart';
 import '../../data/models/movie.dart';
 import '../../data/models/user_profile.dart';
 import '../../domain/services/recommendation_service.dart';
@@ -11,6 +13,7 @@ class RecommendationProvider extends ChangeNotifier {
 
   List<Movie> _recommendations = [];
   bool _isLoading = false;
+  Failure? _failure;
   String? _error;
   int _currentIndex = 0;
   List<String> _selectedGenres = [];
@@ -18,6 +21,7 @@ class RecommendationProvider extends ChangeNotifier {
   int _currentPage = 1;
   bool _hasMorePages = true;
   final List<int> _excludedMovieIds = [];
+  bool _isOffline = false;
   
   // Genre management
   List<Genre> _availableGenres = [];
@@ -34,10 +38,13 @@ class RecommendationProvider extends ChangeNotifier {
   List<Movie> get recommendations => _recommendations;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  Failure? get failure => _failure;
   int get currentIndex => _currentIndex;
   List<String> get selectedGenres => _selectedGenres;
   String get currentSource => _currentSource;
   bool get hasMorePages => _hasMorePages;
+  bool get isOffline => _isOffline;
+  bool get canRetry => _failure != null && ErrorHandler.isRetryableError(_failure!);
   Movie? get currentMovie => 
       _recommendations.isNotEmpty && _currentIndex < _recommendations.length
           ? _recommendations[_currentIndex]
@@ -60,9 +67,18 @@ class RecommendationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _setFailure(Failure? failure) {
+    _failure = failure;
+    _error = failure != null ? ErrorHandler.getErrorMessage(failure) : null;
+    _isOffline = failure is NetworkFailure;
+    notifyListeners();
+  }
+
   // Clear error
   void clearError() {
     _error = null;
+    _failure = null;
+    _isOffline = false;
     notifyListeners();
   }
 
@@ -77,7 +93,7 @@ class RecommendationProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Load personalized recommendations based on user profile
+  /// Load personalized recommendations based on user profile with enhanced error handling
   Future<void> loadPersonalizedRecommendations(UserProfile userProfile, {bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
@@ -86,7 +102,7 @@ class RecommendationProvider extends ChangeNotifier {
     }
 
     _setLoading(true);
-    _setError(null);
+    _setFailure(null);
     _currentSource = 'personalized';
 
     try {
@@ -97,7 +113,7 @@ class RecommendationProvider extends ChangeNotifier {
       );
 
       result.fold(
-        (failure) => _setError(failure.message),
+        (failure) => _setFailure(failure),
         (recommendationResult) {
           _setRecommendations(recommendationResult.movies, append: !refresh && _currentPage > 1);
           _hasMorePages = recommendationResult.movies.length >= 20; // Assuming 20 per page
@@ -105,13 +121,13 @@ class RecommendationProvider extends ChangeNotifier {
         },
       );
     } catch (e) {
-      _setError('Failed to load personalized recommendations: ${e.toString()}');
+      _setFailure(UnknownFailure('Failed to load personalized recommendations: ${e.toString()}'));
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Load genre-based recommendations
+  /// Load genre-based recommendations with enhanced error handling
   Future<void> loadGenreRecommendations(List<String> genres, {bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
@@ -120,7 +136,7 @@ class RecommendationProvider extends ChangeNotifier {
     }
 
     _setLoading(true);
-    _setError(null);
+    _setFailure(null);
     _currentSource = 'genre';
     _selectedGenres = List.from(genres);
 
@@ -132,7 +148,7 @@ class RecommendationProvider extends ChangeNotifier {
       );
 
       result.fold(
-        (failure) => _setError(failure.message),
+        (failure) => _setFailure(failure),
         (recommendationResult) {
           _setRecommendations(recommendationResult.movies, append: !refresh && _currentPage > 1);
           _hasMorePages = recommendationResult.movies.length >= 20;
@@ -140,13 +156,13 @@ class RecommendationProvider extends ChangeNotifier {
         },
       );
     } catch (e) {
-      _setError('Failed to load genre recommendations: ${e.toString()}');
+      _setFailure(UnknownFailure('Failed to load genre recommendations: ${e.toString()}'));
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Load popular movies as fallback
+  /// Load popular movies as fallback with enhanced error handling
   Future<void> loadPopularMovies({bool refresh = false}) async {
     if (refresh) {
       _currentPage = 1;
@@ -155,7 +171,7 @@ class RecommendationProvider extends ChangeNotifier {
     }
 
     _setLoading(true);
-    _setError(null);
+    _setFailure(null);
     _currentSource = 'popular';
 
     try {
@@ -165,7 +181,7 @@ class RecommendationProvider extends ChangeNotifier {
       );
 
       result.fold(
-        (failure) => _setError(failure.message),
+        (failure) => _setFailure(failure),
         (recommendationResult) {
           _setRecommendations(recommendationResult.movies, append: !refresh && _currentPage > 1);
           _hasMorePages = recommendationResult.movies.length >= 20;
@@ -173,7 +189,7 @@ class RecommendationProvider extends ChangeNotifier {
         },
       );
     } catch (e) {
-      _setError('Failed to load popular movies: ${e.toString()}');
+      _setFailure(UnknownFailure('Failed to load popular movies: ${e.toString()}'));
     } finally {
       _setLoading(false);
     }
@@ -430,6 +446,27 @@ class RecommendationProvider extends ChangeNotifier {
   /// Clear all genre filters
   Future<void> clearGenreFilters(UserProfile? userProfile) async {
     await applyGenreFilterRealTime([], userProfile);
+  }
+
+  /// Retry the last failed operation
+  Future<void> retry(UserProfile? userProfile) async {
+    if (!canRetry) return;
+
+    switch (_currentSource) {
+      case 'personalized':
+        if (userProfile != null) {
+          await loadPersonalizedRecommendations(userProfile, refresh: true);
+        } else {
+          await loadPopularMovies(refresh: true);
+        }
+        break;
+      case 'genre':
+        await loadGenreRecommendations(_selectedGenres, refresh: true);
+        break;
+      case 'popular':
+        await loadPopularMovies(refresh: true);
+        break;
+    }
   }
 
   /// Get genre by name

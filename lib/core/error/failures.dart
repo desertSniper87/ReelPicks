@@ -40,3 +40,11 @@ class ValidationFailure extends Failure {
 class LocalStorageFailure extends Failure {
   const LocalStorageFailure(super.message, [super.code]);
 }
+
+class DataFailure extends Failure {
+  const DataFailure(super.message, [super.code]);
+}
+
+class UnknownFailure extends Failure {
+  const UnknownFailure(super.message, [super.code]);
+}
