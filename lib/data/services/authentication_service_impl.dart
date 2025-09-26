@@ -1,0 +1,138 @@
+import '../../core/error/exceptions.dart';
+import '../../core/error/failures.dart';
+import '../../core/utils/result.dart';
+import '../../domain/services/authentication_service.dart';
+import '../datasources/tmdb_client.dart';
+
+/// Concrete implementation of AuthenticationService using TMDb API
+class AuthenticationServiceImpl implements AuthenticationService {
+  final TMDbClient _tmdbClient;
+  String? _currentSessionId;
+  int? _currentAccountId;
+
+  AuthenticationServiceImpl({
+    required TMDbClient tmdbClient,
+  }) : _tmdbClient = tmdbClient;
+
+  @override
+  Future<Result<String>> createRequestToken() async {
+    try {
+      final token = await _tmdbClient.createRequestToken();
+      return Success(token);
+    } on AuthenticationException catch (e) {
+      return ResultFailure(AuthenticationFailure(e.message, e.code));
+    } on NetworkException catch (e) {
+      return ResultFailure(NetworkFailure(e.message, e.code));
+    } on ApiException catch (e) {
+      return ResultFailure(ApiFailure(e.message, e.code));
+    } on Exception catch (e) {
+      return ResultFailure(ApiFailure('Unexpected error: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Result<String>> createSession(String approvedToken) async {
+    try {
+      final sessionId = await _tmdbClient.createSession(approvedToken);
+      _currentSessionId = sessionId;
+      
+      // Get account details to store account ID
+      final accountDetails = await _tmdbClient.getAccountDetails(sessionId);
+      _currentAccountId = accountDetails['id'] as int?;
+      
+      return Success(sessionId);
+    } on AuthenticationException catch (e) {
+      return ResultFailure(AuthenticationFailure(e.message, e.code));
+    } on NetworkException catch (e) {
+      return ResultFailure(NetworkFailure(e.message, e.code));
+    } on ApiException catch (e) {
+      return ResultFailure(ApiFailure(e.message, e.code));
+    } on Exception catch (e) {
+      return ResultFailure(ApiFailure('Unexpected error: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Result<bool>> validateSession() async {
+    if (_currentSessionId == null) {
+      return const ResultFailure(AuthenticationFailure('No active session'));
+    }
+
+    try {
+      // Try to get account details to validate the session
+      await _tmdbClient.getAccountDetails(_currentSessionId!);
+      return const Success(true);
+    } on AuthenticationException catch (e) {
+      // Session is invalid, clear it
+      _currentSessionId = null;
+      _currentAccountId = null;
+      return ResultFailure(AuthenticationFailure(e.message, e.code));
+    } on NetworkException catch (e) {
+      return ResultFailure(NetworkFailure(e.message, e.code));
+    } on ApiException catch (e) {
+      return ResultFailure(ApiFailure(e.message, e.code));
+    } on Exception catch (e) {
+      return ResultFailure(ApiFailure('Unexpected error: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Result<void>> logout() async {
+    try {
+      // Clear local session data
+      _currentSessionId = null;
+      _currentAccountId = null;
+      
+      // Clear any cached data in the client
+      _tmdbClient.clearCache();
+      
+      return const Success(null);
+    } on Exception catch (e) {
+      return ResultFailure(ApiFailure('Logout failed: ${e.toString()}'));
+    }
+  }
+
+  @override
+  String? getCurrentSessionId() {
+    return _currentSessionId;
+  }
+
+  @override
+  bool get isAuthenticated => _currentSessionId != null && _currentAccountId != null;
+
+  @override
+  String getAuthenticationUrl(String requestToken) {
+    return 'https://www.themoviedb.org/authenticate/$requestToken';
+  }
+
+  @override
+  Future<Result<Map<String, dynamic>>> getAccountDetails() async {
+    if (_currentSessionId == null) {
+      return const ResultFailure(AuthenticationFailure('No active session'));
+    }
+
+    try {
+      final accountDetails = await _tmdbClient.getAccountDetails(_currentSessionId!);
+      return Success(accountDetails);
+    } on AuthenticationException catch (e) {
+      return ResultFailure(AuthenticationFailure(e.message, e.code));
+    } on NetworkException catch (e) {
+      return ResultFailure(NetworkFailure(e.message, e.code));
+    } on ApiException catch (e) {
+      return ResultFailure(ApiFailure(e.message, e.code));
+    } on Exception catch (e) {
+      return ResultFailure(ApiFailure('Unexpected error: ${e.toString()}'));
+    }
+  }
+
+  /// Get current account ID (useful for repository operations)
+  int? getCurrentAccountId() {
+    return _currentAccountId;
+  }
+
+  /// Set session details (useful for restoring from storage)
+  void setSessionDetails({String? sessionId, int? accountId}) {
+    _currentSessionId = sessionId;
+    _currentAccountId = accountId;
+  }
+}

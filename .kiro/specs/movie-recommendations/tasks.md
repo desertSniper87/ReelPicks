@@ -13,7 +13,7 @@
   - Write unit tests for all model serialization and deserialization
   - _Requirements: 1.4, 2.4, 6.2, 8.3_
 
-- [ ] 3. Implement API client and network layer
+- [x] 3. Implement API client and network layer
   - Create TMDbClient class with HTTP client configuration and error handling
   - Implement methods for fetching movie recommendations, genres, and movie details
   - Add methods for movie rating (rate/delete rating) and retrieving rated movies
