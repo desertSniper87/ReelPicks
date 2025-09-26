@@ -76,6 +76,9 @@ void main() {
         expect(provider.currentSource, 'popular');
         expect(provider.hasMorePages, true);
         expect(provider.currentMovie, null);
+        expect(provider.availableGenres, isEmpty);
+        expect(provider.isLoadingGenres, false);
+        expect(provider.genreError, null);
       });
     });
 
@@ -373,6 +376,245 @@ void main() {
         // Assert
         expect(result, false);
         expect(provider.error, 'Failed to rate movie: Rating failed');
+      });
+    });
+
+    group('Genre Loading and Filtering', () {
+      final testGenres = [
+        const Genre(id: 28, name: 'Action'),
+        const Genre(id: 35, name: 'Comedy'),
+        const Genre(id: 18, name: 'Drama'),
+        const Genre(id: 27, name: 'Horror'),
+      ];
+
+      test('should load genres successfully', () async {
+        // Arrange
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => Success(testGenres));
+
+        // Act
+        await provider.loadGenres();
+
+        // Assert
+        expect(provider.availableGenres, testGenres);
+        expect(provider.isLoadingGenres, false);
+        expect(provider.genreError, null);
+      });
+
+      test('should handle genre loading failure', () async {
+        // Arrange
+        const failure = ApiFailure('Failed to load genres');
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => ResultFailure(failure));
+
+        // Act
+        await provider.loadGenres();
+
+        // Assert
+        expect(provider.availableGenres, isEmpty);
+        expect(provider.genreError, 'Failed to load genres');
+        expect(provider.isLoadingGenres, false);
+      });
+
+      test('should not reload genres if already loaded', () async {
+        // Arrange
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => Success(testGenres));
+        await provider.loadGenres();
+        reset(mockMovieRepository);
+
+        // Act
+        await provider.loadGenres();
+
+        // Assert
+        verifyNever(mockMovieRepository.getGenres());
+      });
+
+      test('should apply genre filter with real-time filtering', () async {
+        // Arrange
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => Success(testGenres));
+        await provider.loadGenres();
+
+        when(mockMovieRepository.discoverMovies(
+          genreIds: anyNamed('genreIds'),
+          page: anyNamed('page'),
+          sortBy: anyNamed('sortBy'),
+        )).thenAnswer((_) async => Success(testMovies));
+
+        // Act
+        await provider.applyGenreFilterRealTime(['Action', 'Comedy'], testUserProfile);
+
+        // Assert
+        expect(provider.selectedGenres, ['Action', 'Comedy']);
+        expect(provider.currentSource, 'genre');
+        verify(mockMovieRepository.discoverMovies(
+          genreIds: [28, 35], // Action and Comedy IDs
+          page: 1,
+          sortBy: 'popularity.desc',
+        )).called(1);
+      });
+
+      test('should load personalized recommendations when no genres selected', () async {
+        // Arrange
+        when(mockRecommendationService.getPersonalizedRecommendations(
+          any,
+          page: anyNamed('page'),
+          excludeMovieIds: anyNamed('excludeMovieIds'),
+        )).thenAnswer((_) async => Success(testRecommendationResult));
+
+        // Act
+        await provider.applyGenreFilterRealTime([], testUserProfile);
+
+        // Assert
+        expect(provider.selectedGenres, isEmpty);
+        expect(provider.currentSource, 'personalized');
+        verify(mockRecommendationService.getPersonalizedRecommendations(
+          testUserProfile,
+          page: 1,
+          excludeMovieIds: anyNamed('excludeMovieIds'),
+        )).called(1);
+      });
+
+      test('should load popular movies when no genres selected and user not authenticated', () async {
+        // Arrange
+        final unauthenticatedProfile = testUserProfile.copyWith(isAuthenticated: false);
+        when(mockRecommendationService.getPopularMovies(
+          page: anyNamed('page'),
+          excludeMovieIds: anyNamed('excludeMovieIds'),
+        )).thenAnswer((_) async => Success(testRecommendationResult));
+
+        // Act
+        await provider.applyGenreFilterRealTime([], unauthenticatedProfile);
+
+        // Assert
+        expect(provider.selectedGenres, isEmpty);
+        expect(provider.currentSource, 'popular');
+        verify(mockRecommendationService.getPopularMovies(
+          page: 1,
+          excludeMovieIds: anyNamed('excludeMovieIds'),
+        )).called(1);
+      });
+
+      test('should toggle genre correctly', () async {
+        // Arrange
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => Success(testGenres));
+        await provider.loadGenres();
+
+        when(mockMovieRepository.discoverMovies(
+          genreIds: anyNamed('genreIds'),
+          page: anyNamed('page'),
+          sortBy: anyNamed('sortBy'),
+        )).thenAnswer((_) async => Success(testMovies));
+
+        // Act - Add genre
+        await provider.toggleGenre('Action', testUserProfile);
+
+        // Assert
+        expect(provider.selectedGenres, ['Action']);
+
+        // Act - Remove genre
+        await provider.toggleGenre('Action', testUserProfile);
+
+        // Assert
+        expect(provider.selectedGenres, isEmpty);
+      });
+
+      test('should clear genre filters', () async {
+        // Arrange
+        provider.setSelectedGenres(['Action', 'Comedy']);
+        when(mockRecommendationService.getPersonalizedRecommendations(
+          any,
+          page: anyNamed('page'),
+          excludeMovieIds: anyNamed('excludeMovieIds'),
+        )).thenAnswer((_) async => Success(testRecommendationResult));
+
+        // Act
+        await provider.clearGenreFilters(testUserProfile);
+
+        // Assert
+        expect(provider.selectedGenres, isEmpty);
+      });
+
+      test('should get genre by name', () async {
+        // Arrange
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => Success(testGenres));
+        await provider.loadGenres();
+
+        // Act
+        final actionGenre = provider.getGenreByName('Action');
+        final nonExistentGenre = provider.getGenreByName('NonExistent');
+
+        // Assert
+        expect(actionGenre, const Genre(id: 28, name: 'Action'));
+        expect(nonExistentGenre, null);
+      });
+
+      test('should get selected genre objects', () async {
+        // Arrange
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => Success(testGenres));
+        await provider.loadGenres();
+        provider.setSelectedGenres(['Action', 'Comedy']);
+
+        // Act
+        final selectedGenreObjects = provider.selectedGenreObjects;
+
+        // Assert
+        expect(selectedGenreObjects, [
+          const Genre(id: 28, name: 'Action'),
+          const Genre(id: 35, name: 'Comedy'),
+        ]);
+      });
+
+      test('should filter out rated and watched movies from genre recommendations', () async {
+        // Arrange
+        final unratedMovie = Movie(
+          id: 100,
+          title: 'Unrated Movie',
+          overview: 'Not rated yet',
+          posterPath: '/unrated.jpg',
+          genres: [const Genre(id: 28, name: 'Action')],
+          voteAverage: 7.0,
+          releaseDate: '2023-01-01',
+          runtime: 120,
+          userRating: null, // Not rated
+          isWatched: false, // Not watched
+        );
+        
+        final ratedMovie = Movie(
+          id: 101,
+          title: 'Rated Movie',
+          overview: 'Already rated',
+          posterPath: '/rated.jpg',
+          genres: [const Genre(id: 28, name: 'Action')],
+          voteAverage: 8.0,
+          releaseDate: '2023-01-01',
+          runtime: 120,
+          userRating: 8.0, // Rated
+          isWatched: true, // Watched
+        );
+        
+        final moviesWithRated = [unratedMovie, ratedMovie];
+
+        when(mockMovieRepository.getGenres())
+            .thenAnswer((_) async => Success(testGenres));
+        await provider.loadGenres();
+
+        when(mockMovieRepository.discoverMovies(
+          genreIds: anyNamed('genreIds'),
+          page: anyNamed('page'),
+          sortBy: anyNamed('sortBy'),
+        )).thenAnswer((_) async => Success(moviesWithRated));
+
+        // Act
+        await provider.applyGenreFilterRealTime(['Action'], testUserProfile);
+
+        // Assert - Only unrated/unwatched movies should be included
+        expect(provider.recommendations.length, 1);
+        expect(provider.recommendations.first.id, unratedMovie.id);
       });
     });
 

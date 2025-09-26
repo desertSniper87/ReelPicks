@@ -18,6 +18,11 @@ class RecommendationProvider extends ChangeNotifier {
   int _currentPage = 1;
   bool _hasMorePages = true;
   final List<int> _excludedMovieIds = [];
+  
+  // Genre management
+  List<Genre> _availableGenres = [];
+  bool _isLoadingGenres = false;
+  String? _genreError;
 
   RecommendationProvider({
     required RecommendationService recommendationService,
@@ -37,6 +42,11 @@ class RecommendationProvider extends ChangeNotifier {
       _recommendations.isNotEmpty && _currentIndex < _recommendations.length
           ? _recommendations[_currentIndex]
           : null;
+  
+  // Genre getters
+  List<Genre> get availableGenres => _availableGenres;
+  bool get isLoadingGenres => _isLoadingGenres;
+  String? get genreError => _genreError;
 
   // Loading state management
   void _setLoading(bool loading) {
@@ -312,5 +322,129 @@ class RecommendationProvider extends ChangeNotifier {
   /// Check if we need to load more recommendations (for infinite scroll)
   bool shouldLoadMore(int index) {
     return index >= _recommendations.length - 5 && _hasMorePages && !_isLoading;
+  }
+
+  // Genre management methods
+  
+  /// Load available genres from API
+  Future<void> loadGenres() async {
+    if (_availableGenres.isNotEmpty) return; // Already loaded
+    
+    _isLoadingGenres = true;
+    _genreError = null;
+    notifyListeners();
+
+    try {
+      final result = await _movieRepository.getGenres();
+      result.fold(
+        (failure) => _genreError = failure.message,
+        (genres) => _availableGenres = genres,
+      );
+    } catch (e) {
+      _genreError = 'Failed to load genres: ${e.toString()}';
+    } finally {
+      _isLoadingGenres = false;
+      notifyListeners();
+    }
+  }
+
+  /// Apply genre filter with real-time filtering
+  Future<void> applyGenreFilterRealTime(List<String> genreNames, UserProfile? userProfile) async {
+    // Update selected genres immediately for UI responsiveness
+    _selectedGenres = List.from(genreNames);
+    notifyListeners();
+
+    // Convert genre names to IDs for API call
+    final selectedGenreIds = _availableGenres
+        .where((genre) => genreNames.contains(genre.name))
+        .map((genre) => genre.id)
+        .toList();
+
+    if (selectedGenreIds.isEmpty) {
+      // No genres selected, load appropriate default recommendations
+      if (userProfile?.isAuthenticated == true) {
+        await loadPersonalizedRecommendations(userProfile!, refresh: true);
+      } else {
+        await loadPopularMovies(refresh: true);
+      }
+    } else {
+      // Load genre-filtered recommendations
+      await _loadGenreFilteredRecommendations(selectedGenreIds, refresh: true);
+    }
+  }
+
+  /// Load recommendations filtered by genre IDs
+  Future<void> _loadGenreFilteredRecommendations(List<int> genreIds, {bool refresh = false}) async {
+    if (refresh) {
+      _currentPage = 1;
+      _hasMorePages = true;
+      _excludedMovieIds.clear();
+    }
+
+    _setLoading(true);
+    _setError(null);
+    _currentSource = 'genre';
+
+    try {
+      final result = await _movieRepository.discoverMovies(
+        genreIds: genreIds,
+        page: _currentPage,
+        sortBy: 'popularity.desc',
+      );
+
+      result.fold(
+        (failure) => _setError(failure.message),
+        (movies) {
+          // Filter out already rated/watched movies
+          final filteredMovies = movies.where((movie) => 
+            !_excludedMovieIds.contains(movie.id) && 
+            !movie.isWatched && 
+            movie.userRating == null
+          ).toList();
+          
+          _setRecommendations(filteredMovies, append: !refresh && _currentPage > 1);
+          _hasMorePages = movies.length >= 20;
+          if (!refresh) _currentPage++;
+        },
+      );
+    } catch (e) {
+      _setError('Failed to load genre recommendations: ${e.toString()}');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Toggle a single genre in the filter
+  Future<void> toggleGenre(String genreName, UserProfile? userProfile) async {
+    final updatedGenres = List<String>.from(_selectedGenres);
+    
+    if (updatedGenres.contains(genreName)) {
+      updatedGenres.remove(genreName);
+    } else {
+      updatedGenres.add(genreName);
+    }
+    
+    await applyGenreFilterRealTime(updatedGenres, userProfile);
+  }
+
+  /// Clear all genre filters
+  Future<void> clearGenreFilters(UserProfile? userProfile) async {
+    await applyGenreFilterRealTime([], userProfile);
+  }
+
+  /// Get genre by name
+  Genre? getGenreByName(String name) {
+    try {
+      return _availableGenres.firstWhere((genre) => genre.name == name);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get selected genre objects
+  List<Genre> get selectedGenreObjects {
+    return _availableGenres
+        .where((genre) => _selectedGenres.contains(genre.name))
+        .toList();
   }
 }
