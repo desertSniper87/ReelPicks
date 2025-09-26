@@ -6,7 +6,7 @@
   - Set up project folder structure following clean architecture
   - _Requirements: 1.1, 2.1, 7.1_
 
-- [ ] 2. Create core data models and serialization
+- [x] 2. Create core data models and serialization
   - Implement Movie model with JSON serialization for TMDb API response
   - Create Genre model for movie categorization
   - Implement UserPreferences model for storing user settings and profile connections
