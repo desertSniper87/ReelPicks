@@ -36,3 +36,7 @@ class CacheFailure extends Failure {
 class ValidationFailure extends Failure {
   const ValidationFailure(super.message, [super.code]);
 }
+
+class LocalStorageFailure extends Failure {
+  const LocalStorageFailure(super.message, [super.code]);
+}

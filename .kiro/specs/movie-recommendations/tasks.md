@@ -37,7 +37,7 @@
   - Write unit tests for authentication flow and token management
   - _Requirements: 1.1, 1.2, 8.1, 8.2_
 
-- [ ] 6. Create local storage and user preference management
+- [x] 6. Create local storage and user preference management
   - Implement UserRepository for storing and retrieving user preferences locally
   - Add methods for saving TMDb session and account information
   - Add methods for saving IMDb/Letterboxd profile connections

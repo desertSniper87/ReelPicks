@@ -32,3 +32,7 @@ class ValidationException extends AppException {
 class UserFriendlyException extends AppException {
   const UserFriendlyException(super.message, [super.code]);
 }
+
+class LocalStorageException extends AppException {
+  const LocalStorageException(super.message, [super.code]);
+}
