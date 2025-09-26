@@ -22,7 +22,7 @@
   - Write unit tests for API client with mocked responses
   - _Requirements: 2.1, 2.2, 4.2, 8.3, 8.4_
 
-- [ ] 4. Build recommendation service and business logic
+- [x] 4. Build recommendation service and business logic
   - Implement RecommendationService with personalized and genre-based recommendation logic
   - Create algorithm for generating recommendations based on user ratings and preferences
   - Add logic to exclude rated/watched movies from recommendations
