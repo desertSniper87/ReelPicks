@@ -3,12 +3,14 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i4;
+import 'dart:async' as _i5;
 
+import 'package:flutter/foundation.dart' as _i7;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i5;
+import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:movie_recommendation_app/data/datasources/tmdb_client.dart'
-    as _i3;
+    as _i4;
 import 'package:movie_recommendation_app/data/models/movie.dart' as _i2;
 
 // ignore_for_file: type=lint
@@ -31,16 +33,48 @@ class _FakeMovie_0 extends _i1.SmartFake implements _i2.Movie {
     : super(parent, parentInvocation);
 }
 
+class _FakeIOSOptions_1 extends _i1.SmartFake implements _i3.IOSOptions {
+  _FakeIOSOptions_1(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeAndroidOptions_2 extends _i1.SmartFake
+    implements _i3.AndroidOptions {
+  _FakeAndroidOptions_2(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeLinuxOptions_3 extends _i1.SmartFake implements _i3.LinuxOptions {
+  _FakeLinuxOptions_3(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeWindowsOptions_4 extends _i1.SmartFake
+    implements _i3.WindowsOptions {
+  _FakeWindowsOptions_4(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeWebOptions_5 extends _i1.SmartFake implements _i3.WebOptions {
+  _FakeWebOptions_5(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeMacOsOptions_6 extends _i1.SmartFake implements _i3.MacOsOptions {
+  _FakeMacOsOptions_6(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [TMDbClient].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockTMDbClient extends _i1.Mock implements _i3.TMDbClient {
+class MockTMDbClient extends _i1.Mock implements _i4.TMDbClient {
   MockTMDbClient() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i4.Future<List<_i2.Movie>> getMovieRecommendations({
+  _i5.Future<List<_i2.Movie>> getMovieRecommendations({
     List<String>? genres,
     int? page = 1,
     String? sortBy = 'popularity.desc',
@@ -51,12 +85,12 @@ class MockTMDbClient extends _i1.Mock implements _i3.TMDbClient {
               #page: page,
               #sortBy: sortBy,
             }),
-            returnValue: _i4.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
+            returnValue: _i5.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
           )
-          as _i4.Future<List<_i2.Movie>>);
+          as _i5.Future<List<_i2.Movie>>);
 
   @override
-  _i4.Future<List<_i2.Movie>> getMovieBasedRecommendations(
+  _i5.Future<List<_i2.Movie>> getMovieBasedRecommendations(
     int? movieId, {
     int? page = 1,
   }) =>
@@ -66,83 +100,83 @@ class MockTMDbClient extends _i1.Mock implements _i3.TMDbClient {
               [movieId],
               {#page: page},
             ),
-            returnValue: _i4.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
+            returnValue: _i5.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
           )
-          as _i4.Future<List<_i2.Movie>>);
+          as _i5.Future<List<_i2.Movie>>);
 
   @override
-  _i4.Future<List<_i2.Genre>> getGenres() =>
+  _i5.Future<List<_i2.Genre>> getGenres() =>
       (super.noSuchMethod(
             Invocation.method(#getGenres, []),
-            returnValue: _i4.Future<List<_i2.Genre>>.value(<_i2.Genre>[]),
+            returnValue: _i5.Future<List<_i2.Genre>>.value(<_i2.Genre>[]),
           )
-          as _i4.Future<List<_i2.Genre>>);
+          as _i5.Future<List<_i2.Genre>>);
 
   @override
-  _i4.Future<_i2.Movie> getMovieDetails(int? movieId) =>
+  _i5.Future<_i2.Movie> getMovieDetails(int? movieId) =>
       (super.noSuchMethod(
             Invocation.method(#getMovieDetails, [movieId]),
-            returnValue: _i4.Future<_i2.Movie>.value(
+            returnValue: _i5.Future<_i2.Movie>.value(
               _FakeMovie_0(
                 this,
                 Invocation.method(#getMovieDetails, [movieId]),
               ),
             ),
           )
-          as _i4.Future<_i2.Movie>);
+          as _i5.Future<_i2.Movie>);
 
   @override
-  _i4.Future<List<_i2.Movie>> searchMovies(String? query, {int? page = 1}) =>
+  _i5.Future<List<_i2.Movie>> searchMovies(String? query, {int? page = 1}) =>
       (super.noSuchMethod(
             Invocation.method(#searchMovies, [query], {#page: page}),
-            returnValue: _i4.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
+            returnValue: _i5.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
           )
-          as _i4.Future<List<_i2.Movie>>);
+          as _i5.Future<List<_i2.Movie>>);
 
   @override
-  _i4.Future<String> createRequestToken() =>
+  _i5.Future<String> createRequestToken() =>
       (super.noSuchMethod(
             Invocation.method(#createRequestToken, []),
-            returnValue: _i4.Future<String>.value(
-              _i5.dummyValue<String>(
+            returnValue: _i5.Future<String>.value(
+              _i6.dummyValue<String>(
                 this,
                 Invocation.method(#createRequestToken, []),
               ),
             ),
           )
-          as _i4.Future<String>);
+          as _i5.Future<String>);
 
   @override
-  _i4.Future<String> createSession(String? approvedToken) =>
+  _i5.Future<String> createSession(String? approvedToken) =>
       (super.noSuchMethod(
             Invocation.method(#createSession, [approvedToken]),
-            returnValue: _i4.Future<String>.value(
-              _i5.dummyValue<String>(
+            returnValue: _i5.Future<String>.value(
+              _i6.dummyValue<String>(
                 this,
                 Invocation.method(#createSession, [approvedToken]),
               ),
             ),
           )
-          as _i4.Future<String>);
+          as _i5.Future<String>);
 
   @override
-  _i4.Future<bool> rateMovie(int? movieId, double? rating, String? sessionId) =>
+  _i5.Future<bool> rateMovie(int? movieId, double? rating, String? sessionId) =>
       (super.noSuchMethod(
             Invocation.method(#rateMovie, [movieId, rating, sessionId]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i5.Future<bool>);
 
   @override
-  _i4.Future<bool> deleteMovieRating(int? movieId, String? sessionId) =>
+  _i5.Future<bool> deleteMovieRating(int? movieId, String? sessionId) =>
       (super.noSuchMethod(
             Invocation.method(#deleteMovieRating, [movieId, sessionId]),
-            returnValue: _i4.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i5.Future<bool>);
 
   @override
-  _i4.Future<List<_i2.Movie>> getRatedMovies(
+  _i5.Future<List<_i2.Movie>> getRatedMovies(
     int? accountId,
     String? sessionId, {
     int? page = 1,
@@ -153,12 +187,12 @@ class MockTMDbClient extends _i1.Mock implements _i3.TMDbClient {
               [accountId, sessionId],
               {#page: page},
             ),
-            returnValue: _i4.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
+            returnValue: _i5.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
           )
-          as _i4.Future<List<_i2.Movie>>);
+          as _i5.Future<List<_i2.Movie>>);
 
   @override
-  _i4.Future<List<_i2.Movie>> getWatchlistMovies(
+  _i5.Future<List<_i2.Movie>> getWatchlistMovies(
     int? accountId,
     String? sessionId, {
     int? page = 1,
@@ -169,19 +203,19 @@ class MockTMDbClient extends _i1.Mock implements _i3.TMDbClient {
               [accountId, sessionId],
               {#page: page},
             ),
-            returnValue: _i4.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
+            returnValue: _i5.Future<List<_i2.Movie>>.value(<_i2.Movie>[]),
           )
-          as _i4.Future<List<_i2.Movie>>);
+          as _i5.Future<List<_i2.Movie>>);
 
   @override
-  _i4.Future<Map<String, dynamic>> getAccountDetails(String? sessionId) =>
+  _i5.Future<Map<String, dynamic>> getAccountDetails(String? sessionId) =>
       (super.noSuchMethod(
             Invocation.method(#getAccountDetails, [sessionId]),
-            returnValue: _i4.Future<Map<String, dynamic>>.value(
+            returnValue: _i5.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i4.Future<Map<String, dynamic>>);
+          as _i5.Future<Map<String, dynamic>>);
 
   @override
   void clearCache() => super.noSuchMethod(
@@ -194,4 +228,266 @@ class MockTMDbClient extends _i1.Mock implements _i3.TMDbClient {
     Invocation.method(#dispose, []),
     returnValueForMissingStub: null,
   );
+}
+
+/// A class which mocks [FlutterSecureStorage].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockFlutterSecureStorage extends _i1.Mock
+    implements _i3.FlutterSecureStorage {
+  MockFlutterSecureStorage() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i3.IOSOptions get iOptions =>
+      (super.noSuchMethod(
+            Invocation.getter(#iOptions),
+            returnValue: _FakeIOSOptions_1(this, Invocation.getter(#iOptions)),
+          )
+          as _i3.IOSOptions);
+
+  @override
+  _i3.AndroidOptions get aOptions =>
+      (super.noSuchMethod(
+            Invocation.getter(#aOptions),
+            returnValue: _FakeAndroidOptions_2(
+              this,
+              Invocation.getter(#aOptions),
+            ),
+          )
+          as _i3.AndroidOptions);
+
+  @override
+  _i3.LinuxOptions get lOptions =>
+      (super.noSuchMethod(
+            Invocation.getter(#lOptions),
+            returnValue: _FakeLinuxOptions_3(
+              this,
+              Invocation.getter(#lOptions),
+            ),
+          )
+          as _i3.LinuxOptions);
+
+  @override
+  _i3.WindowsOptions get wOptions =>
+      (super.noSuchMethod(
+            Invocation.getter(#wOptions),
+            returnValue: _FakeWindowsOptions_4(
+              this,
+              Invocation.getter(#wOptions),
+            ),
+          )
+          as _i3.WindowsOptions);
+
+  @override
+  _i3.WebOptions get webOptions =>
+      (super.noSuchMethod(
+            Invocation.getter(#webOptions),
+            returnValue: _FakeWebOptions_5(
+              this,
+              Invocation.getter(#webOptions),
+            ),
+          )
+          as _i3.WebOptions);
+
+  @override
+  _i3.MacOsOptions get mOptions =>
+      (super.noSuchMethod(
+            Invocation.getter(#mOptions),
+            returnValue: _FakeMacOsOptions_6(
+              this,
+              Invocation.getter(#mOptions),
+            ),
+          )
+          as _i3.MacOsOptions);
+
+  @override
+  void registerListener({
+    required String? key,
+    required _i7.ValueChanged<String?>? listener,
+  }) => super.noSuchMethod(
+    Invocation.method(#registerListener, [], {#key: key, #listener: listener}),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void unregisterListener({
+    required String? key,
+    required _i7.ValueChanged<String?>? listener,
+  }) => super.noSuchMethod(
+    Invocation.method(#unregisterListener, [], {
+      #key: key,
+      #listener: listener,
+    }),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void unregisterAllListenersForKey({required String? key}) =>
+      super.noSuchMethod(
+        Invocation.method(#unregisterAllListenersForKey, [], {#key: key}),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void unregisterAllListeners() => super.noSuchMethod(
+    Invocation.method(#unregisterAllListeners, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i5.Future<void> write({
+    required String? key,
+    required String? value,
+    _i3.IOSOptions? iOptions,
+    _i3.AndroidOptions? aOptions,
+    _i3.LinuxOptions? lOptions,
+    _i3.WebOptions? webOptions,
+    _i3.MacOsOptions? mOptions,
+    _i3.WindowsOptions? wOptions,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#write, [], {
+              #key: key,
+              #value: value,
+              #iOptions: iOptions,
+              #aOptions: aOptions,
+              #lOptions: lOptions,
+              #webOptions: webOptions,
+              #mOptions: mOptions,
+              #wOptions: wOptions,
+            }),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<String?> read({
+    required String? key,
+    _i3.IOSOptions? iOptions,
+    _i3.AndroidOptions? aOptions,
+    _i3.LinuxOptions? lOptions,
+    _i3.WebOptions? webOptions,
+    _i3.MacOsOptions? mOptions,
+    _i3.WindowsOptions? wOptions,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#read, [], {
+              #key: key,
+              #iOptions: iOptions,
+              #aOptions: aOptions,
+              #lOptions: lOptions,
+              #webOptions: webOptions,
+              #mOptions: mOptions,
+              #wOptions: wOptions,
+            }),
+            returnValue: _i5.Future<String?>.value(),
+          )
+          as _i5.Future<String?>);
+
+  @override
+  _i5.Future<bool> containsKey({
+    required String? key,
+    _i3.IOSOptions? iOptions,
+    _i3.AndroidOptions? aOptions,
+    _i3.LinuxOptions? lOptions,
+    _i3.WebOptions? webOptions,
+    _i3.MacOsOptions? mOptions,
+    _i3.WindowsOptions? wOptions,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#containsKey, [], {
+              #key: key,
+              #iOptions: iOptions,
+              #aOptions: aOptions,
+              #lOptions: lOptions,
+              #webOptions: webOptions,
+              #mOptions: mOptions,
+              #wOptions: wOptions,
+            }),
+            returnValue: _i5.Future<bool>.value(false),
+          )
+          as _i5.Future<bool>);
+
+  @override
+  _i5.Future<void> delete({
+    required String? key,
+    _i3.IOSOptions? iOptions,
+    _i3.AndroidOptions? aOptions,
+    _i3.LinuxOptions? lOptions,
+    _i3.WebOptions? webOptions,
+    _i3.MacOsOptions? mOptions,
+    _i3.WindowsOptions? wOptions,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#delete, [], {
+              #key: key,
+              #iOptions: iOptions,
+              #aOptions: aOptions,
+              #lOptions: lOptions,
+              #webOptions: webOptions,
+              #mOptions: mOptions,
+              #wOptions: wOptions,
+            }),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<Map<String, String>> readAll({
+    _i3.IOSOptions? iOptions,
+    _i3.AndroidOptions? aOptions,
+    _i3.LinuxOptions? lOptions,
+    _i3.WebOptions? webOptions,
+    _i3.MacOsOptions? mOptions,
+    _i3.WindowsOptions? wOptions,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#readAll, [], {
+              #iOptions: iOptions,
+              #aOptions: aOptions,
+              #lOptions: lOptions,
+              #webOptions: webOptions,
+              #mOptions: mOptions,
+              #wOptions: wOptions,
+            }),
+            returnValue: _i5.Future<Map<String, String>>.value(
+              <String, String>{},
+            ),
+          )
+          as _i5.Future<Map<String, String>>);
+
+  @override
+  _i5.Future<void> deleteAll({
+    _i3.IOSOptions? iOptions,
+    _i3.AndroidOptions? aOptions,
+    _i3.LinuxOptions? lOptions,
+    _i3.WebOptions? webOptions,
+    _i3.MacOsOptions? mOptions,
+    _i3.WindowsOptions? wOptions,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteAll, [], {
+              #iOptions: iOptions,
+              #aOptions: aOptions,
+              #lOptions: lOptions,
+              #webOptions: webOptions,
+              #mOptions: mOptions,
+              #wOptions: wOptions,
+            }),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<bool?> isCupertinoProtectedDataAvailable() =>
+      (super.noSuchMethod(
+            Invocation.method(#isCupertinoProtectedDataAvailable, []),
+            returnValue: _i5.Future<bool?>.value(),
+          )
+          as _i5.Future<bool?>);
 }

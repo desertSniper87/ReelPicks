@@ -44,6 +44,9 @@ dependencies:
   # Local storage for user preferences
   shared_preferences: ^2.2.2
   
+  # Secure storage for sensitive data like session tokens
+  flutter_secure_storage: ^9.0.0
+  
   # Cached network images for movie posters
   cached_network_image: ^3.3.0
   

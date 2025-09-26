@@ -2,6 +2,9 @@ import '../../core/utils/result.dart';
 
 /// Abstract authentication service interface
 abstract class AuthenticationService {
+  /// Initialize the service by restoring session from secure storage
+  Future<void> initialize();
+  
   /// Create a new request token for TMDb authentication
   Future<Result<String>> createRequestToken();
   
@@ -25,4 +28,10 @@ abstract class AuthenticationService {
   
   /// Get the TMDb authentication URL for user approval
   String getAuthenticationUrl(String requestToken);
+  
+  /// Get stored username from secure storage
+  Future<String?> getStoredUsername();
+  
+  /// Get stored account name from secure storage
+  Future<String?> getStoredAccountName();
 }

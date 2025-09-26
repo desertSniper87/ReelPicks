@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
@@ -10,14 +11,19 @@ import 'package:movie_recommendation_app/data/services/authentication_service_im
 
 import 'authentication_service_impl_test.mocks.dart';
 
-@GenerateMocks([TMDbClient])
+@GenerateMocks([TMDbClient, FlutterSecureStorage])
 void main() {
   late AuthenticationServiceImpl authService;
   late MockTMDbClient mockTMDbClient;
+  late MockFlutterSecureStorage mockSecureStorage;
 
   setUp(() {
     mockTMDbClient = MockTMDbClient();
-    authService = AuthenticationServiceImpl(tmdbClient: mockTMDbClient);
+    mockSecureStorage = MockFlutterSecureStorage();
+    authService = AuthenticationServiceImpl(
+      tmdbClient: mockTMDbClient,
+      secureStorage: mockSecureStorage,
+    );
   });
 
   group('AuthenticationServiceImpl', () {
@@ -79,7 +85,7 @@ void main() {
     });
 
     group('createSession', () {
-      test('should return Success with session ID and set account details when successful', () async {
+      test('should return Success with session ID and store data securely when successful', () async {
         // Arrange
         const approvedToken = 'approved_token';
         const expectedSessionId = 'test_session_id';
@@ -93,6 +99,8 @@ void main() {
             .thenAnswer((_) async => expectedSessionId);
         when(mockTMDbClient.getAccountDetails(expectedSessionId))
             .thenAnswer((_) async => accountDetails);
+        when(mockSecureStorage.write(key: anyNamed('key'), value: anyNamed('value')))
+            .thenAnswer((_) async {});
 
         // Act
         final result = await authService.createSession(approvedToken);
@@ -110,6 +118,12 @@ void main() {
         
         verify(mockTMDbClient.createSession(approvedToken)).called(1);
         verify(mockTMDbClient.getAccountDetails(expectedSessionId)).called(1);
+        
+        // Verify secure storage calls
+        verify(mockSecureStorage.write(key: 'tmdb_session_id', value: expectedSessionId)).called(1);
+        verify(mockSecureStorage.write(key: 'tmdb_account_id', value: '123')).called(1);
+        verify(mockSecureStorage.write(key: 'tmdb_username', value: 'testuser')).called(1);
+        verify(mockSecureStorage.write(key: 'tmdb_account_name', value: 'Test User')).called(1);
       });
 
       test('should return AuthenticationFailure when session creation fails', () async {
@@ -226,11 +240,14 @@ void main() {
     });
 
     group('logout', () {
-      test('should clear session data and cache', () async {
+      test('should clear session data, secure storage, and cache', () async {
         // Arrange
         const sessionId = 'test_session';
         const accountId = 123;
         authService.setSessionDetails(sessionId: sessionId, accountId: accountId);
+        
+        when(mockSecureStorage.delete(key: anyNamed('key')))
+            .thenAnswer((_) async {});
         
         expect(authService.isAuthenticated, true);
 
@@ -244,6 +261,12 @@ void main() {
         expect(authService.isAuthenticated, false);
         
         verify(mockTMDbClient.clearCache()).called(1);
+        
+        // Verify secure storage deletion
+        verify(mockSecureStorage.delete(key: 'tmdb_session_id')).called(1);
+        verify(mockSecureStorage.delete(key: 'tmdb_account_id')).called(1);
+        verify(mockSecureStorage.delete(key: 'tmdb_username')).called(1);
+        verify(mockSecureStorage.delete(key: 'tmdb_account_name')).called(1);
       });
     });
 
@@ -366,6 +389,173 @@ void main() {
 
         // Assert
         expect(authService.isAuthenticated, true);
+      });
+    });
+
+    group('initialize', () {
+      test('should restore session from secure storage when valid data exists', () async {
+        // Arrange
+        const sessionId = 'stored_session';
+        const accountId = 456;
+        const accountDetails = {'id': accountId, 'username': 'storeduser'};
+        
+        when(mockSecureStorage.read(key: 'tmdb_session_id'))
+            .thenAnswer((_) async => sessionId);
+        when(mockSecureStorage.read(key: 'tmdb_account_id'))
+            .thenAnswer((_) async => accountId.toString());
+        when(mockTMDbClient.getAccountDetails(sessionId))
+            .thenAnswer((_) async => accountDetails);
+
+        // Act
+        await authService.initialize();
+
+        // Assert
+        expect(authService.getCurrentSessionId(), sessionId);
+        expect(authService.getCurrentAccountId(), accountId);
+        expect(authService.isAuthenticated, true);
+        
+        verify(mockSecureStorage.read(key: 'tmdb_session_id')).called(1);
+        verify(mockSecureStorage.read(key: 'tmdb_account_id')).called(1);
+        verify(mockTMDbClient.getAccountDetails(sessionId)).called(1);
+      });
+
+      test('should clear invalid session during initialization', () async {
+        // Arrange
+        const sessionId = 'invalid_session';
+        const accountId = 456;
+        
+        when(mockSecureStorage.read(key: 'tmdb_session_id'))
+            .thenAnswer((_) async => sessionId);
+        when(mockSecureStorage.read(key: 'tmdb_account_id'))
+            .thenAnswer((_) async => accountId.toString());
+        when(mockTMDbClient.getAccountDetails(sessionId))
+            .thenThrow(const AuthenticationException('Invalid session'));
+        when(mockSecureStorage.delete(key: anyNamed('key')))
+            .thenAnswer((_) async {});
+
+        // Act
+        await authService.initialize();
+
+        // Assert
+        expect(authService.getCurrentSessionId(), null);
+        expect(authService.getCurrentAccountId(), null);
+        expect(authService.isAuthenticated, false);
+        
+        // Verify secure storage deletion was called
+        verify(mockSecureStorage.delete(key: 'tmdb_session_id')).called(1);
+        verify(mockSecureStorage.delete(key: 'tmdb_account_id')).called(1);
+        verify(mockSecureStorage.delete(key: 'tmdb_username')).called(1);
+        verify(mockSecureStorage.delete(key: 'tmdb_account_name')).called(1);
+      });
+
+      test('should handle missing session data gracefully', () async {
+        // Arrange
+        when(mockSecureStorage.read(key: 'tmdb_session_id'))
+            .thenAnswer((_) async => null);
+        when(mockSecureStorage.read(key: 'tmdb_account_id'))
+            .thenAnswer((_) async => null);
+
+        // Act
+        await authService.initialize();
+
+        // Assert
+        expect(authService.getCurrentSessionId(), null);
+        expect(authService.getCurrentAccountId(), null);
+        expect(authService.isAuthenticated, false);
+      });
+
+      test('should handle secure storage errors gracefully', () async {
+        // Arrange
+        when(mockSecureStorage.read(key: anyNamed('key')))
+            .thenThrow(Exception('Storage error'));
+
+        // Act
+        await authService.initialize();
+
+        // Assert
+        expect(authService.getCurrentSessionId(), null);
+        expect(authService.getCurrentAccountId(), null);
+        expect(authService.isAuthenticated, false);
+      });
+    });
+
+    group('getStoredUsername', () {
+      test('should return stored username when available', () async {
+        // Arrange
+        const username = 'testuser';
+        when(mockSecureStorage.read(key: 'tmdb_username'))
+            .thenAnswer((_) async => username);
+
+        // Act
+        final result = await authService.getStoredUsername();
+
+        // Assert
+        expect(result, username);
+        verify(mockSecureStorage.read(key: 'tmdb_username')).called(1);
+      });
+
+      test('should return null when username not stored', () async {
+        // Arrange
+        when(mockSecureStorage.read(key: 'tmdb_username'))
+            .thenAnswer((_) async => null);
+
+        // Act
+        final result = await authService.getStoredUsername();
+
+        // Assert
+        expect(result, null);
+      });
+
+      test('should return null when storage error occurs', () async {
+        // Arrange
+        when(mockSecureStorage.read(key: 'tmdb_username'))
+            .thenThrow(Exception('Storage error'));
+
+        // Act
+        final result = await authService.getStoredUsername();
+
+        // Assert
+        expect(result, null);
+      });
+    });
+
+    group('getStoredAccountName', () {
+      test('should return stored account name when available', () async {
+        // Arrange
+        const accountName = 'Test User';
+        when(mockSecureStorage.read(key: 'tmdb_account_name'))
+            .thenAnswer((_) async => accountName);
+
+        // Act
+        final result = await authService.getStoredAccountName();
+
+        // Assert
+        expect(result, accountName);
+        verify(mockSecureStorage.read(key: 'tmdb_account_name')).called(1);
+      });
+
+      test('should return null when account name not stored', () async {
+        // Arrange
+        when(mockSecureStorage.read(key: 'tmdb_account_name'))
+            .thenAnswer((_) async => null);
+
+        // Act
+        final result = await authService.getStoredAccountName();
+
+        // Assert
+        expect(result, null);
+      });
+
+      test('should return null when storage error occurs', () async {
+        // Arrange
+        when(mockSecureStorage.read(key: 'tmdb_account_name'))
+            .thenThrow(Exception('Storage error'));
+
+        // Act
+        final result = await authService.getStoredAccountName();
+
+        // Assert
+        expect(result, null);
       });
     });
   });
