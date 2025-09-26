@@ -3,9 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/app_config.dart';
+import 'core/theme/app_theme.dart';
 import 'presentation/providers/recommendation_provider.dart';
 import 'presentation/providers/user_provider.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/theme_provider.dart';
 import 'presentation/screens/main_navigation_screen.dart';
 import 'data/datasources/tmdb_client.dart';
 import 'data/services/authentication_service_impl.dart';
@@ -62,6 +64,9 @@ class MyApp extends StatelessWidget {
         return MultiProvider(
           providers: [
             ChangeNotifierProvider(
+              create: (_) => ThemeProvider(),
+            ),
+            ChangeNotifierProvider(
               create: (_) => RecommendationProvider(
                 recommendationService: recommendationService,
                 movieRepository: movieRepository,
@@ -79,13 +84,16 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ],
-          child: MaterialApp(
-            title: 'Movie Recommendations',
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-              useMaterial3: true,
-            ),
-            home: const MainNavigationScreen(),
+          child: Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              return MaterialApp(
+                title: 'Movie Recommendations',
+                theme: AppTheme.lightTheme,
+                darkTheme: AppTheme.darkTheme,
+                themeMode: themeProvider.themeMode,
+                home: const MainNavigationScreen(),
+              );
+            },
           ),
         );
       },

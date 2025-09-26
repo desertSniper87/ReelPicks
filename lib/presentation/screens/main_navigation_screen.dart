@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/recommendation_provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/genre_filter.dart';
 import '../widgets/movie_card.dart';
 import '../widgets/movie_list_view.dart';
@@ -404,8 +405,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   Widget _buildSettingsView() {
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, child) {
+    return Consumer2<UserProvider, ThemeProvider>(
+      builder: (context, userProvider, themeProvider, child) {
         return Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -421,15 +422,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.palette),
+                      leading: Icon(themeProvider.currentThemeIcon),
                       title: const Text('Theme'),
-                      subtitle: const Text('Light theme'),
+                      subtitle: Text('${themeProvider.currentThemeName} theme'),
                       trailing: const Icon(Icons.arrow_forward_ios),
                       onTap: () {
-                        // Theme selection could be implemented here
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Theme selection coming soon')),
-                        );
+                        _showThemeDialog(context, themeProvider);
                       },
                     ),
                     const Divider(height: 1),
@@ -538,6 +536,67 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           label: 'Settings',
         ),
       ],
+    );
+  }
+
+  void _showThemeDialog(BuildContext context, ThemeProvider themeProvider) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Choose Theme'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<ThemeMode>(
+                title: const Text('Light'),
+                subtitle: const Text('Always use light theme'),
+                value: ThemeMode.light,
+                groupValue: themeProvider.themeMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null) {
+                    themeProvider.setThemeMode(value);
+                    Navigator.of(context).pop();
+                  }
+                },
+                secondary: const Icon(Icons.light_mode),
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('Dark'),
+                subtitle: const Text('Always use dark theme'),
+                value: ThemeMode.dark,
+                groupValue: themeProvider.themeMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null) {
+                    themeProvider.setThemeMode(value);
+                    Navigator.of(context).pop();
+                  }
+                },
+                secondary: const Icon(Icons.dark_mode),
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('System'),
+                subtitle: const Text('Follow system theme'),
+                value: ThemeMode.system,
+                groupValue: themeProvider.themeMode,
+                onChanged: (ThemeMode? value) {
+                  if (value != null) {
+                    themeProvider.setThemeMode(value);
+                    Navigator.of(context).pop();
+                  }
+                },
+                secondary: const Icon(Icons.brightness_auto),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
