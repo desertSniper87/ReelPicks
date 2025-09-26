@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/app_config.dart';
 import 'presentation/providers/recommendation_provider.dart';
 import 'presentation/providers/user_provider.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/screens/home_screen.dart';
+import 'data/datasources/tmdb_client.dart';
+import 'data/services/authentication_service_impl.dart';
+import 'data/services/recommendation_service_impl.dart';
+import 'data/repositories/user_repository_impl.dart';
+import 'data/repositories/movie_repository_impl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,20 +27,67 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => RecommendationProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-      ],
-      child: MaterialApp(
-        title: 'Movie Recommendations',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-        ),
-        home: const HomeScreen(),
-      ),
+    return FutureBuilder<SharedPreferences>(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const MaterialApp(
+            home: Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        // Initialize dependencies
+        const secureStorage = FlutterSecureStorage();
+        final sharedPreferences = snapshot.data!;
+        final tmdbClient = TMDbClient();
+        
+        // Initialize repositories
+        final userRepository = UserRepositoryImpl(
+          sharedPreferences: sharedPreferences,
+          secureStorage: secureStorage,
+        );
+        final movieRepository = MovieRepositoryImpl(tmdbClient: tmdbClient);
+        
+        // Initialize services
+        final authService = AuthenticationServiceImpl(
+          tmdbClient: tmdbClient,
+          secureStorage: secureStorage,
+        );
+        final recommendationService = RecommendationServiceImpl(
+          movieRepository: movieRepository,
+        );
+
+        return MultiProvider(
+          providers: [
+            ChangeNotifierProvider(
+              create: (_) => RecommendationProvider(
+                recommendationService: recommendationService,
+                movieRepository: movieRepository,
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => UserProvider(
+                userRepository: userRepository,
+              ),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => AuthProvider(
+                authService: authService,
+              ),
+            ),
+          ],
+          child: MaterialApp(
+            title: 'Movie Recommendations',
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+              useMaterial3: true,
+            ),
+            home: const HomeScreen(),
+          ),
+        );
+      },
     );
   }
 }
