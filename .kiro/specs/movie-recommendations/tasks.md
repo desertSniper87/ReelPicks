@@ -53,7 +53,7 @@
   - Write unit tests for state management logic
   - _Requirements: 2.1, 3.5, 4.3, 5.3, 8.1_
 
-- [ ] 8. Build movie card widget for swipe interface
+- [x] 8. Build movie card widget for swipe interface
   - Create MovieCard widget with poster image, title, and genre display
   - Add star rating widget that allows users to rate movies (1-10 scale)
   - Implement rating submission that automatically marks movie as watched
